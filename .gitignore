@@ -1,0 +1,15 @@
+# Teilnehmerdaten nie ins Repository
+*.json
+*.pdf
+*.csv
+*.tsv
+*.xlsx
+*.xls
+namen*.txt
+liste*.txt
+
+# System
+.DS_Store
+Thumbs.db
+.venv/
+__pycache__/
