@@ -17,6 +17,7 @@ Die gesamte Anwendung ist eine einzige Datei (`gruppenrotation.html`). Sie brauc
 - Spitznamen und wählbares Namensformat (wie in der Liste, Vorname Nachname, nur Vorname)
 - Druckansicht im INeKO-Stil mit Logo und Fußzeile
 - Sicherung als JSON-Datei speichern und wieder laden
+- Neue Gruppe beginnen: alle Daten löschen, auf Wunsch mit Sicherung vorab
 
 ## Betrieb
 
@@ -73,6 +74,10 @@ Neu hinzugekommene oder lange abwesende Personen liegen unter dem üblichen Wert
 Das Abgleich-Fenster zeigt, wer wiedererkannt wurde, wer neu ist und wer nicht mehr dabei ist. Namen, die sich nur leicht unterscheiden (Doppelname nach Heirat, Tippfehler, Kurzform), werden der bisherigen Person vorgeschlagen und lassen sich per Auswahl zuordnen. Unterschiede nur bei Umlauten (ü/ue) werden ohne Nachfrage erkannt.
 
 Wiedererkannte behalten Nummer, Spitzname, Sperrpaare und alle Begegnungen. Neue bekommen die nächste freie Nummer. Wer nicht mehr dabei ist, wird ausgeblendet, behält aber seine Historie und wird bei einer Rückkehr wiedererkannt. Frühere Module zählen beim Einteilen voll mit.
+
+### Neue Gruppe beginnen
+
+Für eine ganz neue Gruppe (keine Fortsetzung mit neuem Modul) im Reiter **Teilnehmende** auf **Neue Gruppe beginnen** klicken. Das Fenster zeigt, was gelöscht wird: Teilnehmende (auch aus früheren Modulen), Runden mit allen Begegnungen, Sperrpaare und vor Ort geänderte Anwesenheit. Standardmäßig wird vorher eine Sicherung heruntergeladen, mit der sich die alte Gruppe über **Sicherung laden** wiederherstellen lässt. Titel, Fußzeile und Namensformat bleiben erhalten. Danach die neue Teilnehmerliste einlesen.
 
 ### Teilnehmende bearbeiten
 

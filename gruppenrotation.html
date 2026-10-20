@@ -129,6 +129,12 @@ p.hilfe { color: var(--leise); margin: 0 0 16px; max-width: 70ch; }
 .knopf.haupt { background: var(--akzent); border-color: var(--akzent); color: var(--flaeche); }
 .knopf.gefahr { color: var(--mehrfach); }
 .knopf.gefahr:hover { border-color: var(--mehrfach); }
+.knopf.gefahr.haupt { background: var(--mehrfach); border-color: var(--mehrfach); color: var(--flaeche); }
+.knopf.gefahr.haupt:hover { filter: brightness(.92); }
+.neu-liste { margin: 0 0 16px; padding-left: 20px; }
+.neu-liste li { margin: 2px 0; }
+.neu-wahl { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 4px; cursor: pointer; }
+.neu-wahl input { margin-top: 4px; flex: none; }
 .knopf:disabled { opacity: .45; cursor: not-allowed; }
 .zeile { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 
@@ -492,6 +498,19 @@ footer.fuss:empty { display: none; }
     <button class="knopf" id="dlg-tn-abbr">Abbrechen</button>
     <span class="platz"></span>
     <button class="knopf haupt" id="dlg-tn-ok">Speichern</button>
+  </div>
+</dialog>
+
+<dialog class="klein" id="dlg-neu" aria-labelledby="dlg-neu-titel">
+  <div class="dlg-kopf">
+    <h2 id="dlg-neu-titel">Neue Gruppe beginnen</h2>
+    <button class="knopf-zu" id="dlg-neu-zu" aria-label="Schließen"><span aria-hidden="true">×</span></button>
+  </div>
+  <div class="dlg-inhalt" id="dlg-neu-inhalt"></div>
+  <div class="dlg-fuss">
+    <button class="knopf" id="dlg-neu-abbr">Abbrechen</button>
+    <span class="platz"></span>
+    <button class="knopf gefahr haupt" id="dlg-neu-ok">Alle Daten löschen</button>
   </div>
 </dialog>
 
@@ -1093,6 +1112,8 @@ window.addEventListener("popstate", () => {
     tnZu();
   } else if (name === "abgleich" && $("#dlg-abgleich").open) {
     abgleichZu();
+  } else if (name === "neu" && $("#dlg-neu").open) {
+    neueGruppeZu();
   }
 });
 document.querySelectorAll("nav.reiter button").forEach(b => {
@@ -1203,7 +1224,6 @@ function zeichneTeilnehmer() {
         placeholder="Teilnehmer_in&#9;Gruppe&#9;28.09.2026&#9;29.09.2026&#9;Bemerkung&#10;Mustermann, Max&#9;&#9;&#9;Entschuldigt&#9;…"></textarea>
       <div class="zeile" style="margin-top:10px">
         <button class="knopf haupt" id="btn-einlesen">Eingefügte Tabelle einlesen</button>
-        ${hat ? `<button class="knopf gefahr" id="btn-reset" style="margin-left:auto">Alles zurücksetzen</button>` : ""}
       </div>
       <p class="fehler" id="import-fehler" role="alert"></p>
     </details>
@@ -1214,6 +1234,7 @@ function zeichneTeilnehmer() {
           <label class="knopf" style="cursor:pointer">Neues Modul einlesen
             <input type="file" id="datei-modul" name="modul-datei" class="sr-only" accept=".pdf,application/pdf,.csv,.tsv,.txt,text/csv,text/plain">
           </label>
+          <button class="knopf gefahr" id="btn-neue-gruppe">Neue Gruppe beginnen</button>
           <button class="knopf haupt" id="btn-neu-tn">Neue Runde einteilen</button>
         </div>
       </div>
@@ -1244,12 +1265,8 @@ function zeichneTeilnehmer() {
     const f = e.target.files[0]; e.target.value = ""; if (!f) return;
     pdfEinlesen(f);
   };
-  const reset = $("#btn-reset");
-  if (reset) reset.onclick = () => {
-    if (!confirm("Wirklich alles löschen? Teilnehmende, Runden und Anwesenheit werden entfernt. Vorher ggf. Sicherung speichern.")) return;
-    const ci = Z.ci;
-    Z = leererZustand(); Z.ci = ci; speichern(); editor = null; zeichnen(); melde("Alles zurückgesetzt");
-  };
+  const neueGruppe = $("#btn-neue-gruppe");
+  if (neueGruppe) neueGruppe.onclick = neueGruppeOeffnen;
 }
 
 async function einlesen(lesen) {
@@ -2359,7 +2376,7 @@ $("#dlg-abgleich").addEventListener("close", () => { abgleichPlan = null; verlau
 
 /* ============================================================ Sicherung */
 
-$("#btn-sichern").onclick = () => {
+function sicherungHerunterladen() {
   const blob = new Blob([JSON.stringify(Z, null, 2)], { type: "application/json" });
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
@@ -2367,7 +2384,59 @@ $("#btn-sichern").onclick = () => {
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   melde("Sicherung heruntergeladen");
-};
+}
+$("#btn-sichern").onclick = sicherungHerunterladen;
+
+/* ================================================= Neue Gruppe beginnen */
+
+/* Loescht Teilnehmende, Runden, Anwesenheit und Sperrpaare, damit eine
+   neue Gruppe ohne alte Begegnungen startet. Das Erscheinungsbild bleibt. */
+function neueGruppeOeffnen() {
+  const anzahl = (n, eins, mehr) => `${n} ${n === 1 ? eins : mehr}`;
+  const aktivN = Z.teilnehmer.filter(t => t.inListe !== false).length;
+  const ehemN = Z.teilnehmer.length - aktivN;
+  const korrN = Object.values(Z.korrektur || {}).reduce((s, k) => s + Object.keys(k).length, 0);
+  $("#dlg-neu-inhalt").innerHTML = `
+    <p style="margin:0 0 10px">Damit startest du mit einer leeren Liste für eine neue Gruppe.
+      ${Z.kurs ? `Aus <strong>${esc(Z.kurs)}</strong> werden gelöscht:` : "Gelöscht werden:"}</p>
+    <ul class="neu-liste">
+      <li>${anzahl(aktivN, "Teilnehmer*in", "Teilnehmende")}${ehemN ? ` und ${anzahl(ehemN, "Person", "Personen")} aus früheren Modulen` : ""}</li>
+      <li>${anzahl(Z.runden.length, "Runde", "Runden")} mit allen Begegnungen</li>
+      ${(Z.sperrpaare || []).length ? `<li>${anzahl(Z.sperrpaare.length, "Sperrpaar", "Sperrpaare")}</li>` : ""}
+      ${korrN ? `<li>vor Ort geänderte Anwesenheit</li>` : ""}
+    </ul>
+    <p class="hilfe" style="margin:0 0 16px">Titel, Fußzeile und Namensformat unter Erscheinungsbild bleiben erhalten.</p>
+    <label class="neu-wahl"><input type="checkbox" id="neu-sichern" checked>
+      <span>Vorher eine Sicherung herunterladen<br><span class="hilfe" style="margin:0">Damit lässt sich die alte Gruppe später über „Sicherung laden“ wiederherstellen.</span></span></label>`;
+  $("#dlg-neu").showModal();
+  verlaufMerken("neu");
+  $("#dlg-neu-abbr").focus();
+}
+
+function neueGruppeZu() { verlaufFreigeben(); if ($("#dlg-neu").open) $("#dlg-neu").close(); }
+
+function neueGruppeBeginnen() {
+  const mitSicherung = $("#neu-sichern").checked;
+  if (mitSicherung) sicherungHerunterladen();
+  const ci = Z.ci;
+  Z = leererZustand(); Z.ci = ci;
+  speichern();
+  editor = null;
+  offeneRunden = null; offeneModule = null;
+  matrixEhemalige = false;
+  einst = { tag: null, modus: einst.modus, wert: einst.wert, variante: 0, label: "" };
+  neueGruppeZu();
+  zeige("teilnehmer");
+  melde(mitSicherung ? "Sicherung heruntergeladen, alle Daten gelöscht. Jetzt die neue Liste einlesen." : "Alle Daten gelöscht. Jetzt die neue Liste einlesen.");
+}
+
+$("#dlg-neu-ok").onclick = neueGruppeBeginnen;
+$("#dlg-neu-abbr").onclick = neueGruppeZu;
+$("#dlg-neu-zu").onclick = neueGruppeZu;
+$("#dlg-neu").addEventListener("close", () => {
+  verlaufFreigeben();
+  const b = $("#btn-neue-gruppe"); if (b) b.focus();
+});
 
 /* Dateiname aus dem Kurs, z. B. "Gruppenrotation_CA2609-3_M1_PZG_Erstgespraech.json" */
 function sicherungsName() {
